@@ -4,7 +4,7 @@ from app.core.settings import settings
 from app.routers import health
 
 
-def create_app() -> FastAPI:
+def create_app():
     app = FastAPI(title="FastAPI Project", version="0.1.0")
 
     app.add_middleware(
