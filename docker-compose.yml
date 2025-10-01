@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: quiz-be
+    env_file:
+      - .env
+    ports:
+      - "${PORT}:${PORT}"
