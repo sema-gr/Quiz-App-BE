@@ -25,14 +25,33 @@
    poetry shell
    \`\`\`
 
+5. **Налаштування .env**
+
+   Створи файл .env у корені проєкту:
+
+   PORT=8000
+
+   POSTGRES_USER=admin
+   POSTGRES_PASSWORD=admin
+   POSTGRES_DB=quiz_app
+
+   DATABASE_URL=postgresql+asyncpg://admin:admin@db:5432/quiz_app
+   REDIS_URL=redis://redis:6379/0
+
+   ALLOWED_ORIGINS=http://localhost:3000
+
 ### Запуск додатку
 
-**Локальний запуск з автоматичним перезавантаженням:**
-\`\`\`bash
-poetry run uvicorn main:app --reload
-\`\`\`
+Запуск через Docker Compose
+docker compose up --build
 
-Сервер буде доступний за адресою: **http://127.0.0.1:8000/**
+Сервіси, які будуть запущені:
+   backend – FastAPI застосунок
+   db – PostgreSQL
+   redis – Redis
+
+Після запуску бекенд буде доступний за адресою:
+👉 http://localhost:8000
 
 ### Перевірка роботи
 
@@ -46,9 +65,9 @@ curl http://127.0.0.1:8000/
 {"status_code": 200, "detail": "ok", "result": "working"}
 \`\`\`
 
-### Інструменти розробки
-
-- **Black** - автоформатування коду
-- **Ruff** - linting
-- **Pytest** - тестування
-- **Uvicorn** - сервер з автоперезавантаженням
+🧰 Інструменти розробки
+   Poetry – менеджер залежностей
+   Ruff – linting
+   Black – автоформатування
+   Pytest – тестування
+   Uvicorn – сервер
