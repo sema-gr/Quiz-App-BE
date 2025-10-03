@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict
 from typing import List
 
 
@@ -11,12 +11,6 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str
     allowed_origins: List[str]
-
-    @field_validator("allowed_origins", mode="before")
-    def split_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip().strip('"') for origin in v.split(",")]
-        return v
 
 
 settings = Settings()

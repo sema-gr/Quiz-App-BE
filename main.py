@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
+from app.db.redis import redis_client
 from app.routers import health
 
 
-def create_app():
+def create_app() -> FastAPI:
     app = FastAPI(title="FastAPI Project", version="0.1.0")
 
     app.add_middleware(
@@ -16,6 +17,15 @@ def create_app():
     )
 
     app.include_router(health.router)
+
+    @app.on_event("startup")
+    async def startup_event():
+        await redis_client.connect()
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        await redis_client.disconnect()
+
     return app
 
 
