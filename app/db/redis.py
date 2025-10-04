@@ -22,7 +22,7 @@ class RedisClient:
         if self._client:
             await self._client.close()
             self._client = None
-            print("🔌 З'єднання з Redis закрито")
+            print("Disconnect from Redis")
 
     async def set(self, key, value, expire: Optional[int]):
         if not self._client:
