@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
+from uuid import UUID
 
 
 class UserBase(BaseModel):
@@ -22,7 +23,7 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(UserBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True
