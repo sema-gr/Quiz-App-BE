@@ -1,38 +1,12 @@
-from sqlalchemy import Column, String
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declared_attr
-
-
-class UUIDMixin:
-    @declared_attr
-    def id(cls):
-        return Column(
-            UUID(as_uuid=True),
-            primary_key=True,
-            index=True,
-            server_default=func.gen_random_uuid(),
-        )
-
-
-class TimestampMixin:
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
+from app.models.mixin import TimestampMixin, UUIDMixin
 
 
 class User(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "users"
 
-    email = Column(String, unique=True, index=True, nullable=False)
-    full_name = Column(String, nullable=True)
-    hashed_password = Column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String, nullable=True)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
