@@ -6,6 +6,8 @@ authors = ["arman455 <snositel99@gmail.com>"]
 readme = "README.md"
 package-mode = false
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 [tool.poetry.dependencies]
 python = ">=3.11"
 fastapi = ">=0.118.0,<0.119.0"
@@ -18,7 +20,17 @@ sqlalchemy = {extras = ["asyncio"], version = "^2.0.43"}
 alembic = "^1.16.5"
 redis = {extras = ["async"], version = "^6.4.0"}
 psycopg2-binary = "^2.9.10"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+pydantic = {extras = ["email"], version = "^2.11.10"}
+bcrypt = "<4.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "httpx (>=0.28.1,<0.29.0)",
+    "pytest-asyncio (>=1.2.0,<2.0.0)",
+    "alembic (>=1.16.5,<2.0.0)"
+]
