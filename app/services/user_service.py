@@ -17,8 +17,8 @@ class UserService:
         logger.warning(f"Fetched {len(users)} users (skip={skip}, limit={limit})")
         return users
 
-    async def get_by_id(self, user_id: UUID):
-        user = await self.repo.get_by_id(user_id)
+    async def get_by_id(self, user_id: UUID) -> User:
+        user = await self.repo.get_by_field("id", user_id)
         if not user:
             logger.warning(f"User with id={user_id} not found")
             raise HTTPException(
@@ -27,8 +27,8 @@ class UserService:
             )
         return user
 
-    async def create(self, user_data: UserCreate):
-        existing = await self.repo.get_by_email(user_data.email)
+    async def create(self, user_data: UserCreate) -> User:
+        existing = await self.repo.get_by_field("email", user_data.email)
         if existing:
             logger.warning(
                 f"Attempt to register with existing email: {user_data.email}"
@@ -50,7 +50,7 @@ class UserService:
         )
         return created_user
 
-    async def update(self, user_id: UUID, update_data: UserUpdate):
+    async def update(self, user_id: UUID, update_data: UserUpdate) -> User:
         user = await self.get_by_id(user_id)
 
         if update_data.full_name is not None:
