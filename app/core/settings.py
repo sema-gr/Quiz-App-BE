@@ -12,5 +12,13 @@ class Settings(BaseSettings):
     redis_url: str
     allowed_origins: List[str]
 
+    secret_key: str
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
+    auth0_domain: str | None = None
+    auth0_audience: str | None = None
+    auth0_issuer: str | None = None
+
 
 settings = Settings()
