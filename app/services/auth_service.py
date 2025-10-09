@@ -3,25 +3,54 @@ import httpx
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import settings
-from app.core.security import verify_password, create_access_token
+from app.core.security import hash_password, verify_password
 from app.repository.user_repository import UserRepository
-from app.schemas.user import Token, UserLogin
+from app.schemas.user import Token, UserLogin, UserRegister
 from app.models.user import User
+from app.services.create_token import create_access_token
 
 
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.repo = UserRepository(db)
 
-    async def login(self, credentials: UserLogin) -> Token:
-        user = await self.repo.get_by_field("email", credentials.email)
-        if not user or not verify_password(credentials.password, user.hashed_password):
+    async def login(
+        self, credentials: UserLogin | None = None, token: str | None = None
+    ):
+        if token:
+            try:
+                unverified_header = jwt.get_unverified_header(token)
+                if "kid" in unverified_header:
+                    return await self.login_auth0(token)
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Local tokens are not used for login — please use email/password.",
+                    )
+            except JWTError:
+                raise HTTPException(status_code=401, detail="Invalid token format")
+        elif credentials:
+            return await self.login_local(credentials)
+        else:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No credentials or token provided",
             )
-        token = create_access_token({"sub": str(user.id)})
-        return Token(access_token=token)
+
+    async def register(self, data: UserRegister) -> User:
+        existing = await self.repo.get_by_field("email", data.email)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists",
+            )
+
+        user = User(
+            email=data.email,
+            full_name=data.full_name,
+            hashed_password=hash_password(data.password),
+        )
+        return await self.repo.create(user)
 
     async def get_current_user(self, token: str) -> User:
         credentials_exception = HTTPException(
@@ -44,7 +73,17 @@ class AuthService:
 
         return user
 
-    async def login_auth0(self, token: str) -> User:
+    async def login_local(self, credentials: UserLogin) -> Token:
+        user = await self.repo.get_by_field("email", credentials.email)
+        if not user or not verify_password(credentials.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+        token = create_access_token({"sub": str(user.id)})
+        return Token(access_token=token)
+
+    async def login_auth0(self, token: str) -> Token:
         if not settings.auth0_domain or not settings.auth0_audience:
             raise HTTPException(status_code=500, detail="Auth0 not configured")
 
@@ -79,12 +118,14 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid token")
 
         email = payload.get("email")
-        if email is None:
+        if not email:
             raise HTTPException(status_code=401, detail="Email claim missing in token")
 
         user = await self.repo.get_by_email(email)
-        if user is None:
+        if not user:
             user = await self.repo.create(
                 User(email=email, full_name=email.split("@")[0], hashed_password="")
             )
-        return user
+
+        token = create_access_token({"sub": str(user.id)})
+        return Token(access_token=token)
