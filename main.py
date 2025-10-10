@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.settings import settings
 from app.db.redis import redis_client
-from app.routers import health, user_router
+from app.routers import health, user_router, auth_router
 
 
 def create_app() -> FastAPI:
@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(user_router.router)
+    app.include_router(auth_router.router)
 
     @app.on_event("startup")
     async def startup_event():
