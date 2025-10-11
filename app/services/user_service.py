@@ -50,8 +50,26 @@ class UserService:
         )
         return created_user
 
-    async def update(self, user_id: UUID, update_data: UserUpdate) -> User:
+    async def update(
+        self, user_id: UUID, update_data: UserUpdate, current_user: User
+    ) -> User:
+        if current_user.id != user_id:
+            logger.warning(
+                f"User {current_user.id} tried to update another user {user_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update your own profile",
+            )
+
         user = await self.get_by_id(user_id)
+
+        if hasattr(update_data, "email") and update_data.email:
+            logger.warning(f"User {user_id} attempted to change email")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email cannot be changed",
+            )
 
         if update_data.full_name is not None:
             user.full_name = update_data.full_name
@@ -62,7 +80,16 @@ class UserService:
         logger.warning(f"User updated: id={updated_user.id}")
         return updated_user
 
-    async def delete(self, user_id: UUID):
+    async def delete(self, user_id: UUID, current_user: User):
+        if current_user.id != user_id:
+            logger.warning(
+                f"User {current_user.id} tried to delete another user {user_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete your own profile",
+            )
+
         user = await self.get_by_id(user_id)
         await self.repo.delete(user)
         logger.warning(f"User deleted: id={user_id}")
