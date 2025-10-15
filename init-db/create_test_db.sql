@@ -1,0 +1,1 @@
+CREATE DATABASE quiz_app_test;

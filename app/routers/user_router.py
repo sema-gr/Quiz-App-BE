@@ -4,13 +4,17 @@ from uuid import UUID
 from app.core.database import get_db
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.user_service import UserService
+from app.services.auth_service import AuthService
+from app.models.user import User
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
 ):
     return await UserService(db).get_all(skip=skip, limit=limit)
 
@@ -27,12 +31,19 @@ async def create_user(user_data: UserCreate, db: AsyncSession = Depends(get_db))
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: UUID, update_data: UserUpdate, db: AsyncSession = Depends(get_db)
+    user_id: UUID,
+    update_data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(AuthService.get_current_user),
 ):
-    return await UserService(db).update(user_id, update_data)
+    return await UserService(db).update(user_id, update_data, current_user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    await UserService(db).delete(user_id)
+async def delete_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(AuthService.get_current_user),
+):
+    await UserService(db).delete(user_id, current_user)
     return None
