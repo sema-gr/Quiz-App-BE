@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import HTTPException
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.models.company import Company
@@ -10,13 +11,13 @@ class CompanyService:
     async def create_company(self, user_id: int, data: CompanyCreate):
         async with self.uow:
             company = Company(**data.dict(), owner_id=user_id)
-            self.uow.companies.add(company)
-            await self.uow.commit()
+
+            company = await self.uow.companies.create(company)
             return company
 
     async def update_company(self, user_id: int, company_id: int, data: CompanyUpdate):
         async with self.uow:
-            company = await self.uow.companies.get(company_id)
+            company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
                 raise HTTPException(status_code=404, detail="Company not found")
             if company.owner_id != user_id:
@@ -27,21 +28,21 @@ class CompanyService:
             await self.uow.commit()
             return company
 
-    async def delete_company(self, user_id: int, company_id: int):
+    async def delete_company(self, user_id: UUID, company_id: UUID):
         async with self.uow:
-            company = await self.uow.companies.get(company_id)
+            company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
                 raise HTTPException(status_code=404, detail="Company not found")
             if company.owner_id != user_id:
                 raise HTTPException(status_code=403, detail="Permission denied")
 
-            await self.uow.companies.delete(company_id)
+            await self.uow.companies.delete(company)
             await self.uow.commit()
             return {"detail": "Company deleted"}
 
     async def get_company(self, company_id: int):
         async with self.uow:
-            company = await self.uow.companies.get(company_id)
+            company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
                 raise HTTPException(status_code=404, detail="Company not found")
             return company

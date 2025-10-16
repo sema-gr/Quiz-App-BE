@@ -1,8 +1,9 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, Query
-from app.core.dependencies import get_uow
+from app.core.dependencies import get_current_user, get_uow
+from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyRead
 from app.services.company_service import CompanyService
-from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 @router.post("/", response_model=CompanyRead)
 async def create_company(
     data: CompanyCreate,
-    user=Depends(AuthService.get_current_user),
+    user=Depends(get_current_user),
     uow=Depends(get_uow),
 ):
     return await CompanyService(uow).create_company(user.id, data)
@@ -18,9 +19,9 @@ async def create_company(
 
 @router.patch("/{company_id}", response_model=CompanyRead)
 async def update_company(
-    company_id: int,
+    company_id: UUID,
     data: CompanyUpdate,
-    user=Depends(AuthService.get_current_user),
+    user: User = Depends(get_current_user),
     uow=Depends(get_uow),
 ):
     return await CompanyService(uow).update_company(user.id, company_id, data)
@@ -28,15 +29,15 @@ async def update_company(
 
 @router.delete("/{company_id}")
 async def delete_company(
-    company_id: int,
-    user=Depends(AuthService.get_current_user),
+    company_id: UUID,
+    user: User = Depends(get_current_user),
     uow=Depends(get_uow),
 ):
     return await CompanyService(uow).delete_company(user.id, company_id)
 
 
 @router.get("/{company_id}", response_model=CompanyRead)
-async def get_company(company_id: int, uow=Depends(get_uow)):
+async def get_company(company_id: UUID, uow=Depends(get_uow)):
     return await CompanyService(uow).get_company(company_id)
 
 
@@ -51,9 +52,9 @@ async def list_companies(
 
 @router.patch("/{company_id}/visibility")
 async def change_visibility(
-    company_id: int,
+    company_id: UUID,
     is_visible: bool,
-    user=Depends(AuthService.get_current_user),
+    user=Depends(get_current_user),
     uow=Depends(get_uow),
 ):
     return await CompanyService(uow).change_visibility(user.id, company_id, is_visible)

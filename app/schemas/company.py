@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
 
 class CompanyBase(BaseModel):
@@ -18,9 +19,9 @@ class CompanyUpdate(BaseModel):
 
 
 class CompanyRead(CompanyBase):
-    id: int
+    id: UUID
     is_visible: bool
-    owner_id: int
+    owner_id: UUID
 
     class Config:
         orm_mode = True
