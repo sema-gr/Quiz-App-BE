@@ -33,3 +33,8 @@ class BaseRepository(Generic[T]):
     async def delete(self, obj: T) -> None:
         await self.db.delete(obj)
         await self.db.commit()
+
+    async def list(self, skip: int = 0, limit: int = 100):
+        stmt = select(self.model).offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
+        return result.scalars().all()

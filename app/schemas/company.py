@@ -1,9 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
+from app.schemas.base import BaseConfigModel
 
 
-class CompanyBase(BaseModel):
+class CompanyBase(BaseConfigModel):
     name: str
     description: Optional[str] = None
 
@@ -22,6 +23,3 @@ class CompanyRead(CompanyBase):
     id: UUID
     is_visible: bool
     owner_id: UUID
-
-    class Config:
-        orm_mode = True

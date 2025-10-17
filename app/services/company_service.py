@@ -1,61 +1,64 @@
 from uuid import UUID
-from fastapi import HTTPException
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.models.company import Company
+from app.core.exceptions import CompanyNotFound, PermissionDenied
+from app.uow.unit_of_work import UnitOfWork
 
 
 class CompanyService:
-    def __init__(self, uow):
+    def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
-    async def create_company(self, user_id: int, data: CompanyCreate):
+    async def create_company(self, user_id: UUID, data: CompanyCreate) -> Company:
         async with self.uow:
             company = Company(**data.dict(), owner_id=user_id)
+            return await self.uow.companies.create(company)
 
-            company = await self.uow.companies.create(company)
-            return company
-
-    async def update_company(self, user_id: int, company_id: int, data: CompanyUpdate):
+    async def update_company(
+        self, user_id: UUID, company_id: UUID, data: CompanyUpdate
+    ) -> Company:
         async with self.uow:
             company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
-                raise HTTPException(status_code=404, detail="Company not found")
+                raise CompanyNotFound()
             if company.owner_id != user_id:
-                raise HTTPException(status_code=403, detail="Permission denied")
+                raise PermissionDenied()
 
             for key, value in data.dict(exclude_unset=True).items():
                 setattr(company, key, value)
-            await self.uow.commit()
             return company
 
-    async def delete_company(self, user_id: UUID, company_id: UUID):
+    async def delete_company(self, user_id: UUID, company_id: UUID) -> Company:
         async with self.uow:
             company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
-                raise HTTPException(status_code=404, detail="Company not found")
+                raise CompanyNotFound()
             if company.owner_id != user_id:
-                raise HTTPException(status_code=403, detail="Permission denied")
+                raise PermissionDenied()
 
             await self.uow.companies.delete(company)
-            await self.uow.commit()
-            return {"detail": "Company deleted"}
+            return company
 
-    async def get_company(self, company_id: int):
+    async def get_company(self, company_id: UUID) -> Company:
         async with self.uow:
             company = await self.uow.companies.get_by_field("id", company_id)
             if not company:
-                raise HTTPException(status_code=404, detail="Company not found")
+                raise CompanyNotFound()
             return company
 
-    async def list_companies(self, skip: int = 0, limit: int = 10):
+    async def list_companies(self, skip: int = 0, limit: int = 10) -> list[Company]:
         async with self.uow:
             return await self.uow.companies.list(skip=skip, limit=limit)
 
-    async def change_visibility(self, user_id: int, company_id: int, visible: bool):
+    async def change_visibility(
+        self, user_id: UUID, company_id: UUID, visible: bool
+    ) -> Company:
         async with self.uow:
             company = await self.uow.companies.get_by_field("id", company_id)
+            if not company:
+                raise CompanyNotFound()
             if company.owner_id != user_id:
-                raise HTTPException(403, "Not allowed")
+                raise PermissionDenied()
+
             company.is_visible = visible
-            await self.uow.commit()
             return company
