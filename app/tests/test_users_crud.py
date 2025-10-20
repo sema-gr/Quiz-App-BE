@@ -47,7 +47,6 @@ async def test_create_user():
 @pytest.mark.asyncio
 async def test_update_user():
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # Спочатку створимо юзера
         response = await client.post(
             "/users/",
             json={
@@ -58,7 +57,6 @@ async def test_update_user():
         )
         user_id = response.json()["id"]
 
-        # Оновимо дані
         response = await client.put(
             f"/users/{user_id}", json={"full_name": "NewName", "password": "newpass123"}
         )
@@ -70,7 +68,6 @@ async def test_update_user():
 @pytest.mark.asyncio
 async def test_delete_user():
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # Спочатку створимо юзера
         response = await client.post(
             "/users/",
             json={
@@ -81,11 +78,9 @@ async def test_delete_user():
         )
         user_id = response.json()["id"]
 
-        # Видалимо
         response = await client.delete(f"/users/{user_id}")
         assert response.status_code == 204
 
-        # Перевіримо, що його більше немає
         response = await client.get("/users/")
         data = response.json()
         assert all(u["id"] != user_id for u in data)

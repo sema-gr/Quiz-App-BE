@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from uuid import UUID
+from app.schemas.base import BaseConfigModel
 
 
 class UserBase(BaseModel):
@@ -33,20 +34,14 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
-class UserRead(BaseModel):
+class UserRead(BaseConfigModel):
     id: UUID
-    email: str
+    email: EmailStr
     full_name: str
 
-    class Config:
-        orm_mode = True
 
-
-class UserResponse(UserBase):
+class UserResponse(UserBase, BaseConfigModel):
     id: UUID
-
-    class Config:
-        from_attributes = True
 
 
 class UsersList(BaseModel):

@@ -39,3 +39,10 @@ async def read_users_me(
 ):
     service = AuthService(db)
     return await service.get_current_user(token)
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuthService(db).get_current_user(token)
