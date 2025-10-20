@@ -14,36 +14,36 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def list_users(
     skip: int = 0,
     limit: int = 10,
-    db: AsyncSession = Depends(get_db),
+    sessions: AsyncSession = Depends(get_db),
 ):
-    return await UserService(db).get_all(skip=skip, limit=limit)
+    return await UserService(sessions).get_all(skip=skip, limit=limit)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
-    return await UserService(db).get_by_id(user_id)
+async def get_user(user_id: UUID, sessions: AsyncSession = Depends(get_db)):
+    return await UserService(sessions).get_by_id(user_id)
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    return await UserService(db).create(user_data)
+async def create_user(user_data: UserCreate, sessions: AsyncSession = Depends(get_db)):
+    return await UserService(sessions).create(user_data)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID,
     update_data: UserUpdate,
-    db: AsyncSession = Depends(get_db),
+    sessions: AsyncSession = Depends(get_db),
     current_user: User = Depends(AuthService.get_current_user),
 ):
-    return await UserService(db).update(user_id, update_data, current_user)
+    return await UserService(sessions).update(user_id, update_data, current_user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    sessions: AsyncSession = Depends(get_db),
     current_user: User = Depends(AuthService.get_current_user),
 ):
-    await UserService(db).delete(user_id, current_user)
+    await UserService(sessions).delete(user_id, current_user)
     return None

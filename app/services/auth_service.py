@@ -1,91 +1,93 @@
-from fastapi import HTTPException, status
 import httpx
 from jose import jwt, JWTError
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import settings
 from app.core.security import hash_password, verify_password
-from app.repository.user_repository import UserRepository
+from app.core.exceptions import (
+    UserAlreadyExistsError,
+    InvalidCredentialsError,
+    InvalidTokenError,
+    AuthConfigurationError,
+    TokenValidationError,
+)
+from app.uow.unit_of_work import UnitOfWork
 from app.schemas.user import Token, UserLogin, UserRegister
 from app.models.user import User
 from app.services.create_token import create_access_token
 
 
 class AuthService:
-    def __init__(self, db: AsyncSession):
-        self.repo = UserRepository(db)
+    def __init__(self, uow: UnitOfWork):
+        self.uow = uow
 
     async def login(
         self, credentials: UserLogin | None = None, token: str | None = None
-    ):
+    ) -> Token:
         if token:
             try:
                 unverified_header = jwt.get_unverified_header(token)
                 if "kid" in unverified_header:
                     return await self.login_auth0(token)
                 else:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Local tokens are not used for login — please use email/password.",
+                    raise InvalidTokenError(
+                        "Local tokens are not used for login — please use email/password."
                     )
             except JWTError:
-                raise HTTPException(status_code=401, detail="Invalid token format")
+                raise InvalidTokenError("Invalid token format")
         elif credentials:
             return await self.login_local(credentials)
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No credentials or token provided",
-            )
+            raise InvalidCredentialsError("No credentials or token provided")
 
     async def register(self, data: UserRegister) -> User:
-        existing = await self.repo.get_by_field("email", data.email)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this email already exists",
+        async with self.uow:
+            existing = await self.uow.users.get_by_field("email", data.email)
+            if existing:
+                raise UserAlreadyExistsError("User with this email already exists")
+
+            user = User(
+                email=data.email,
+                full_name=data.full_name,
+                hashed_password=hash_password(data.password),
             )
 
-        user = User(
-            email=data.email,
-            full_name=data.full_name,
-            hashed_password=hash_password(data.password),
-        )
-        return await self.repo.create(user)
+            user = await self.uow.users.create(user)
+            await self.uow.session.flush()
+            await self.uow.session.refresh(user)
+
+            return user
 
     async def get_current_user(self, token: str) -> User:
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
         try:
             payload = jwt.decode(
                 token, settings.secret_key, algorithms=[settings.algorithm]
             )
             user_id: str = payload.get("sub")
             if user_id is None:
-                raise credentials_exception
+                raise TokenValidationError("User ID not found in token")
         except JWTError:
-            raise credentials_exception
+            raise TokenValidationError("Could not validate credentials")
 
-        user = await self.repo.get_by_field("id", user_id)
-        if user is None:
-            raise credentials_exception
+        async with self.uow:
+            user = await self.uow.users.get_by_field("id", user_id)
+            if user is None:
+                raise TokenValidationError("User not found")
 
-        return user
+            return user
 
     async def login_local(self, credentials: UserLogin) -> Token:
-        user = await self.repo.get_by_field("email", credentials.email)
-        if not user or not verify_password(credentials.password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-            )
-        token = create_access_token({"sub": str(user.id)})
-        return Token(access_token=token)
+        async with self.uow:
+            user = await self.uow.users.get_by_field("email", credentials.email)
+            if not user or not verify_password(
+                credentials.password, user.hashed_password
+            ):
+                raise InvalidCredentialsError("Invalid email or password")
+
+            token = create_access_token({"sub": str(user.id)})
+            return Token(access_token=token)
 
     async def login_auth0(self, token: str) -> Token:
         if not settings.auth0_domain or not settings.auth0_audience:
-            raise HTTPException(status_code=500, detail="Auth0 not configured")
+            raise AuthConfigurationError("Auth0 not configured")
 
         jwks_url = f"https://{settings.auth0_domain}/.well-known/jwks.json"
         async with httpx.AsyncClient() as client:
@@ -105,7 +107,7 @@ class AuthService:
                         "e": key["e"],
                     }
             if not rsa_key:
-                raise HTTPException(status_code=401, detail="Invalid token header")
+                raise InvalidTokenError("Invalid token header")
 
             payload = jwt.decode(
                 token,
@@ -115,17 +117,21 @@ class AuthService:
                 issuer=f"https://{settings.auth0_domain}/",
             )
         except JWTError:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise InvalidTokenError("Invalid token")
 
         email = payload.get("email")
         if not email:
-            raise HTTPException(status_code=401, detail="Email claim missing in token")
+            raise InvalidTokenError("Email claim missing in token")
 
-        user = await self.repo.get_by_email(email)
-        if not user:
-            user = await self.repo.create(
-                User(email=email, full_name=email.split("@")[0], hashed_password="")
-            )
+        async with self.uow:
+            user = await self.uow.users.get_by_field("email", email)
+            if not user:
+                user = User(
+                    email=email, full_name=email.split("@")[0], hashed_password=""
+                )
+                user = await self.uow.users.create(user)
+                await self.uow.session.flush()
+                await self.uow.session.refresh(user)
 
-        token = create_access_token({"sub": str(user.id)})
-        return Token(access_token=token)
+            token = create_access_token({"sub": str(user.id)})
+            return Token(access_token=token)

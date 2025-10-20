@@ -3,5 +3,5 @@ from app.repository.base_repository import BaseRepository
 
 
 class CompanyRepository(BaseRepository[Company]):
-    def __init__(self, db):
-        super().__init__(Company, db)
+    def __init__(self, sessions):
+        super().__init__(Company, sessions)

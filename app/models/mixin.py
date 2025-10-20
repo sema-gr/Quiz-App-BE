@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -9,7 +10,8 @@ class UUIDMixin:
         UUID(as_uuid=True),
         primary_key=True,
         index=True,
-        server_default=func.gen_random_uuid(),
+        default=uuid.uuid4,
+        nullable=False,
     )
 
 
