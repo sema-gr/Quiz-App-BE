@@ -53,7 +53,7 @@ class CompanyService:
 
     async def list_companies(self, skip: int = 0, limit: int = 10) -> list[Company]:
         async with self.uow:
-            return await self.uow.companies.list(skip=skip, limit=limit)
+            return await self.uow.companies.get_all(skip=skip, limit=limit)
 
     async def change_visibility(
         self, user_id: UUID, company_id: UUID, visible: bool

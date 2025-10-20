@@ -1,10 +1,9 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query
-from app.core.dependencies import get_current_user, get_uow
+from app.core.dependencies import get_current_user, get_company_service
 from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyRead
 from app.services.company_service import CompanyService
-from app.uow.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -13,9 +12,8 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 async def create_company(
     data: CompanyCreate,
     user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.create_company(user.id, data)
 
 
@@ -24,9 +22,8 @@ async def update_company(
     company_id: UUID,
     data: CompanyUpdate,
     user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.update_company(user.id, company_id, data)
 
 
@@ -34,18 +31,16 @@ async def update_company(
 async def delete_company(
     company_id: UUID,
     user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.delete_company(user.id, company_id)
 
 
 @router.get("/{company_id}", response_model=CompanyRead)
 async def get_company(
     company_id: UUID,
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.get_company(company_id)
 
 
@@ -53,9 +48,8 @@ async def get_company(
 async def list_companies(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, le=100),
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.list_companies(skip=skip, limit=limit)
 
 
@@ -64,7 +58,6 @@ async def change_visibility(
     company_id: UUID,
     is_visible: bool,
     user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
+    service: CompanyService = Depends(get_company_service),
 ):
-    service = CompanyService(uow)
     return await service.change_visibility(user.id, company_id, is_visible)

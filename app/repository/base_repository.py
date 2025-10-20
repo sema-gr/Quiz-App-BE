@@ -10,8 +10,9 @@ class BaseRepository(Generic[T]):
         self.model = model
         self.db = db
 
-    async def get_all(self, skip: int = 0, limit: int = 10) -> List[T]:
-        result = await self.db.execute(select(self.model).offset(skip).limit(limit))
+    async def get_all(self, skip: int = 0, limit: int = 100) -> List[T]:
+        stmt = select(self.model).offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
         return result.scalars().all()
 
     async def get_by_field(self, field_name: str, value: Any) -> Optional[T]:
@@ -21,20 +22,11 @@ class BaseRepository(Generic[T]):
 
     async def create(self, obj: T) -> T:
         self.db.add(obj)
-        await self.db.commit()
-        await self.db.refresh(obj)
         return obj
 
     async def update(self, obj: T) -> T:
-        await self.db.commit()
-        await self.db.refresh(obj)
+        self.db.add(obj)
         return obj
 
     async def delete(self, obj: T) -> None:
         await self.db.delete(obj)
-        await self.db.commit()
-
-    async def list(self, skip: int = 0, limit: int = 100):
-        stmt = select(self.model).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return result.scalars().all()
