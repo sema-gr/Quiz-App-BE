@@ -11,8 +11,12 @@ class CompanyService:
 
     async def create_company(self, user_id: UUID, data: CompanyCreate) -> Company:
         async with self.uow:
-            company = Company(**data.dict(), owner_id=user_id)
-            return await self.uow.companies.create(company)
+            company_data = data.dict()
+            company_data["owner_id"] = user_id
+
+            company = Company(**company_data)
+            result = await self.uow.companies.create(company)
+            return result
 
     async def update_company(
         self, user_id: UUID, company_id: UUID, data: CompanyUpdate
@@ -24,9 +28,10 @@ class CompanyService:
             if company.owner_id != user_id:
                 raise PermissionDenied()
 
-            for key, value in data.dict(exclude_unset=True).items():
-                setattr(company, key, value)
-            return company
+            for field, value in data.dict(exclude_unset=True).items():
+                setattr(company, field, value)
+
+            return await self.uow.companies.update(company)
 
     async def delete_company(self, user_id: UUID, company_id: UUID) -> Company:
         async with self.uow:
@@ -61,4 +66,4 @@ class CompanyService:
                 raise PermissionDenied()
 
             company.is_visible = visible
-            return company
+            return await self.uow.companies.update(company)

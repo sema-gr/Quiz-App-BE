@@ -1,10 +1,6 @@
-class CompanyError(Exception):
-    """Error"""
-
-
-class CompanyNotFound(CompanyError):
+class CompanyNotFound(Exception):
     """Company not found"""
 
 
-class PermissionDenied(CompanyError):
+class PermissionDenied(Exception):
     """Permission denied"""

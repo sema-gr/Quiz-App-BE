@@ -36,7 +36,7 @@ class Token(BaseModel):
 
 class UserRead(BaseConfigModel):
     id: UUID
-    email: str
+    email: EmailStr
     full_name: str
 
 
