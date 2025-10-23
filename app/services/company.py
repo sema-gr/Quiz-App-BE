@@ -35,7 +35,7 @@ class CompanyService:
             company = await self._get_owned_company(user_id, company_id)
             for field, value in data.dict(exclude_unset=True).items():
                 setattr(company, field, value)
-            return await self.uow.companies.update(company)
+            return await self.uow.companies.create(company)
 
     async def delete_company(self, user_id: UUID, company_id: UUID) -> Company:
         async with self.uow:
@@ -57,4 +57,4 @@ class CompanyService:
         async with self.uow:
             company = await self._get_owned_company(user_id, company_id)
             company.is_visible = visible
-            return await self.uow.companies.update(company)
+            return await self.uow.companies.create(company)

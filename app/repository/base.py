@@ -24,9 +24,5 @@ class BaseRepository(Generic[T]):
         self.session.add(obj)
         return obj
 
-    async def update(self, obj: T) -> T:
-        self.session.add(obj)
-        return obj
-
     async def delete(self, obj: T) -> None:
         await self.session.delete(obj)

@@ -2,14 +2,11 @@ import enum
 
 
 class MembershipStatus(enum.Enum):
-    MEMBER = "member"
-    INVITED = "invited"
-    REQUESTED = "requested"
+    ACTIVE = "active"
+    PENDING = "pending"
 
 
-class ActionType(enum.Enum):
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
+class MembershipAction(enum.Enum):
     INVITE = "invite"
+    ACCEPT = "accept"
     REMOVE = "remove"

@@ -1,15 +1,11 @@
 from __future__ import annotations
+from typing import Optional
 import uuid
-from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
-from app.models.enum import ActionType, MembershipStatus
+from app.models.enum import MembershipAction, MembershipStatus
 from app.models.mixin import UUIDMixin, TimestampMixin
-
-if TYPE_CHECKING:
-    from .user import User
-    from .company import Company
 
 
 class CompanyAssociation(Base, UUIDMixin, TimestampMixin):
@@ -26,11 +22,11 @@ class CompanyAssociation(Base, UUIDMixin, TimestampMixin):
     status: Mapped[MembershipStatus] = mapped_column(
         Enum(MembershipStatus, name="membership_status"),
         nullable=False,
-        default=MembershipStatus.REQUESTED,
+        default=MembershipStatus.PENDING,
     )
 
-    company: Mapped[Company] = relationship("Company", back_populates="associations")
-    user: Mapped[User] = relationship("User", back_populates="company_associations")
+    company: Mapped["Company"] = relationship("Company", back_populates="associations")
+    user: Mapped["User"] = relationship("User", back_populates="company_associations")
 
     actions: Mapped[list[CompanyAction]] = relationship(
         "CompanyAction", back_populates="association", cascade="all, delete-orphan"
@@ -44,8 +40,8 @@ class CompanyAction(Base, UUIDMixin, TimestampMixin):
         ForeignKey("company_associations.id", ondelete="CASCADE"),
         nullable=False,
     )
-    action_type: Mapped[ActionType] = mapped_column(
-        Enum(ActionType, name="action_type"),
+    action_type: Mapped[MembershipAction] = mapped_column(
+        Enum(MembershipAction, name="action_type"),
         nullable=False,
     )
     performed_by_id: Mapped[uuid.UUID] = mapped_column(
@@ -57,4 +53,4 @@ class CompanyAction(Base, UUIDMixin, TimestampMixin):
     association: Mapped[CompanyAssociation] = relationship(
         "CompanyAssociation", back_populates="actions"
     )
-    performed_by: Mapped[User | None] = relationship("User")
+    performed_by: Mapped[Optional["User"]] = relationship("User")

@@ -12,42 +12,36 @@ class CompanyMemberRepository(BaseRepository[CompanyAssociation]):
 
     async def get_by_user_and_company(self, user_id, company_id):
         stmt = select(self.model).where(
-            self.model.user_id == user_id,
-            self.model.company_id == company_id,
+            self.model.user_id == user_id, self.model.company_id == company_id
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
     async def exists(self, user_id, company_id) -> bool:
-        stmt = select(self.model).where(
-            self.model.user_id == user_id,
-            self.model.company_id == company_id,
-        )
-        result = await self.session.execute(stmt)
-        return result.scalars().first() is not None
+        return await self.get_by_user_and_company(user_id, company_id) is not None
 
-    async def get_user_invitations(self, user_id):
+    async def get_user_pending_invitations(self, user_id):
         stmt = select(self.model).where(
             self.model.user_id == user_id,
-            self.model.status == MembershipStatus.INVITED,
+            self.model.status == MembershipStatus.PENDING.value,
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_company_requests(self, company_id):
+    async def get_company_pending_requests(self, company_id):
         stmt = select(self.model).where(
             self.model.company_id == company_id,
-            self.model.status == MembershipStatus.REQUESTED,
+            self.model.status == MembershipStatus.PENDING.value,
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_all_members(self, company_id, skip=0, limit=10):
+    async def get_active_members(self, company_id, skip=0, limit=10):
         stmt = (
             select(self.model)
             .where(
                 self.model.company_id == company_id,
-                self.model.status == MembershipStatus.MEMBER,
+                self.model.status == MembershipStatus.ACTIVE.value,
             )
             .offset(skip)
             .limit(limit)

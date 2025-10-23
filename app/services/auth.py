@@ -85,10 +85,7 @@ class AuthService:
             token = create_access_token({"sub": str(user.id)})
             return Token(access_token=token)
 
-    async def login_auth0(self, token: str) -> Token:
-        if not settings.auth0_domain or not settings.auth0_audience:
-            raise AuthConfigurationError("Auth0 not configured")
-
+    async def _verify_auth0_token(self, token: str) -> dict:
         jwks_url = f"https://{settings.auth0_domain}/.well-known/jwks.json"
         async with httpx.AsyncClient() as client:
             r = await client.get(jwks_url)
@@ -116,8 +113,13 @@ class AuthService:
                 audience=settings.auth0_audience,
                 issuer=f"https://{settings.auth0_domain}/",
             )
+            return payload
+
         except JWTError:
             raise InvalidTokenError("Invalid token")
+
+    async def login_auth0(self, token: str) -> Token:
+        payload = await self._verify_auth0_token(token)
 
         email = payload.get("email")
         if not email:

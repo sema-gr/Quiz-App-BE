@@ -1,14 +1,9 @@
-from typing import TYPE_CHECKING
 import uuid
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 from app.models.mixin import UUIDMixin, TimestampMixin
-
-if TYPE_CHECKING:
-    from .user import User
-    from .company_associationand_actions import CompanyAssociation
 
 
 class Company(Base, UUIDMixin, TimestampMixin):

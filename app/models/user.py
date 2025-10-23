@@ -1,12 +1,7 @@
-from typing import TYPE_CHECKING
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.models.mixin import UUIDMixin, TimestampMixin
-
-if TYPE_CHECKING:
-    from .company import Company
-    from .company_associationand_actions import CompanyAssociation, CompanyAction
 
 
 class User(Base, UUIDMixin, TimestampMixin):

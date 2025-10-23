@@ -27,7 +27,7 @@ class CompanyMembershipService:
             assoc = CompanyAssociation(
                 company_id=company_id,
                 user_id=target_user_id,
-                status=MembershipStatus.INVITED,
+                status=MembershipStatus.PENDING.value,
             )
             await self.uow.company_members.create(assoc)
             return assoc
@@ -37,11 +37,10 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.INVITED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise InvitationNotFound
 
-            assoc.status = MembershipStatus.MEMBER
-            await self.uow.company_members.update(assoc)
+            assoc.status = MembershipStatus.ACTIVE.value
             return assoc
 
     async def request_to_join(self, user_id: UUID, company_id: UUID):
@@ -52,7 +51,7 @@ class CompanyMembershipService:
             assoc = CompanyAssociation(
                 company_id=company_id,
                 user_id=user_id,
-                status=MembershipStatus.REQUESTED,
+                status=MembershipStatus.PENDING.value,
             )
             await self.uow.company_members.create(assoc)
             return assoc
@@ -64,11 +63,10 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.REQUESTED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise RequestNotFound
 
-            assoc.status = MembershipStatus.MEMBER
-            await self.uow.company_members.update(assoc)
+            assoc.status = MembershipStatus.ACTIVE.value
             return assoc
 
     async def reject_request(self, owner_id: UUID, company_id: UUID, user_id: UUID):
@@ -78,10 +76,10 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.REQUESTED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise RequestNotFound
-            await self.uow.company_members.delete(assoc)
 
+            await self.uow.company_members.delete(assoc)
             return {"detail": "Request rejected"}
 
     async def decline_invitation(self, user_id: UUID, company_id: UUID):
@@ -89,7 +87,7 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.INVITED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise InvitationNotFound
 
             await self.uow.company_members.delete(assoc)
@@ -100,7 +98,7 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.REQUESTED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise RequestNotFound
 
             await self.uow.company_members.delete(assoc)
@@ -113,7 +111,7 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.MEMBER:
+            if not assoc or assoc.status != MembershipStatus.ACTIVE.value:
                 raise MemberNotFound
 
             await self.uow.company_members.delete(assoc)
@@ -123,7 +121,7 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.MEMBER:
+            if not assoc or assoc.status != MembershipStatus.ACTIVE.value:
                 raise MemberNotFound
 
             await self.uow.company_members.delete(assoc)
@@ -138,7 +136,7 @@ class CompanyMembershipService:
             assoc = await self.uow.company_members.get_by_user_and_company(
                 target_user_id, company_id
             )
-            if not assoc or assoc.status != MembershipStatus.INVITED:
+            if not assoc or assoc.status != MembershipStatus.PENDING.value:
                 raise InvitationNotFound
 
             await self.uow.company_members.delete(assoc)
@@ -146,13 +144,13 @@ class CompanyMembershipService:
 
     async def list_members(self, company_id: UUID, skip: int = 0, limit: int = 10):
         async with self.uow:
-            return await self.uow.company_members.get_all_members(
+            return await self.uow.company_members.get_active_members(
                 company_id, skip, limit
             )
 
     async def list_invitations(self, user_id: UUID):
         async with self.uow:
-            return await self.uow.company_members.get_user_invitations(user_id)
+            return await self.uow.company_members.get_user_pending_invitations(user_id)
 
     async def list_requests_for_owner(self, owner_id: UUID, company_id: UUID):
         async with self.uow:
@@ -162,5 +160,7 @@ class CompanyMembershipService:
             if not company:
                 raise CompanyNotFound
 
-            requests = await self.uow.company_members.get_company_requests(company_id)
+            requests = await self.uow.company_members.get_company_pending_requests(
+                company_id
+            )
             return requests
