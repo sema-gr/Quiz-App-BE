@@ -1,11 +1,14 @@
 from sqlalchemy import select
-from app.models.company_member import CompanyMember, MembershipStatus
-from app.repository.base_repository import BaseRepository
+from app.models.company_associationand_actions import (
+    CompanyAssociation,
+    MembershipStatus,
+)
+from app.repository.base import BaseRepository
 
 
-class CompanyMemberRepository(BaseRepository[CompanyMember]):
+class CompanyMemberRepository(BaseRepository[CompanyAssociation]):
     def __init__(self, session):
-        super().__init__(CompanyMember, session)
+        super().__init__(CompanyAssociation, session)
 
     async def get_by_user_and_company(self, user_id, company_id):
         stmt = select(self.model).where(

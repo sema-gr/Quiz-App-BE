@@ -15,9 +15,11 @@ class CompanyService:
             raise CompanyNotFound()
         return company
 
-    async def _get_owned_company(self, user_id: UUID, company_id: UUID) -> Company:
-        company = await self._get_company_or_404(company_id)
-        if company.owner_id != user_id:
+    async def _get_owned_company(self, owner_id: UUID, company_id: UUID) -> Company:
+        company = await self.uow.companies.get_by_field("id", company_id)
+        if not company:
+            raise CompanyNotFound()
+        if company.owner_id != owner_id:
             raise PermissionDenied()
         return company
 
@@ -31,10 +33,8 @@ class CompanyService:
     ) -> Company:
         async with self.uow:
             company = await self._get_owned_company(user_id, company_id)
-
             for field, value in data.dict(exclude_unset=True).items():
                 setattr(company, field, value)
-
             return await self.uow.companies.update(company)
 
     async def delete_company(self, user_id: UUID, company_id: UUID) -> Company:

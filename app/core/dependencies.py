@@ -1,10 +1,10 @@
 from app.db.postgres import async_session
-from app.services.company_members_service import CompanyMembershipService
-from app.services.company_service import CompanyService
+from app.services.company_members import CompanyMembershipService
+from app.services.company import CompanyService
 from app.uow.unit_of_work import UnitOfWork
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from app.services.auth_service import AuthService
+from app.services.auth import AuthService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 

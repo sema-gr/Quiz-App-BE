@@ -6,7 +6,7 @@ from app.models.mixin import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from .company import Company
-    from .company_member import CompanyMember
+    from .company_associationand_actions import CompanyAssociation, CompanyAction
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -19,9 +19,16 @@ class User(Base, UUIDMixin, TimestampMixin):
     companies: Mapped[list["Company"]] = relationship(
         "Company", back_populates="owner", cascade="all, delete-orphan"
     )
-    memberships: Mapped[list["CompanyMember"]] = relationship(
-        "CompanyMember",
+
+    company_associations: Mapped[list["CompanyAssociation"]] = relationship(
+        "CompanyAssociation",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="raise_on_sql",
+    )
+
+    performed_actions: Mapped[list["CompanyAction"]] = relationship(
+        "CompanyAction",
+        back_populates="performed_by",
         lazy="raise_on_sql",
     )

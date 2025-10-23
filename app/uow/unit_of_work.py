@@ -1,16 +1,15 @@
-from app.core.exceptions import CompanyNotFound, PermissionDenied
-from app.repository.user_repository import UserRepository
+from app.repository.user import UserRepository
 from app.uow.base import BaseUnitOfWork
-from app.repository.company_repository import CompanyRepository
-from app.repository.company_member_repository import CompanyMemberRepository
+from app.repository.company import CompanyRepository
+from app.repository.company_members import CompanyMemberRepository
 
 
 class UnitOfWork(BaseUnitOfWork):
     def __init__(self, session_factory):
         super().__init__(session_factory)
-        self.users: UserRepository | None = None
-        self.companies: CompanyRepository | None = None
-        self.company_members: CompanyMemberRepository | None = None
+        self.users: UserRepository
+        self.companies: CompanyRepository
+        self.company_members: CompanyMemberRepository
 
     async def __aenter__(self):
         await super().__aenter__()
@@ -18,11 +17,3 @@ class UnitOfWork(BaseUnitOfWork):
         self.companies = CompanyRepository(self.session)
         self.company_members = CompanyMemberRepository(self.session)
         return self
-
-    async def get_owned_company(self, owner_id, company_id):
-        company = await self.companies.get_by_field("id", company_id)
-        if not company:
-            raise CompanyNotFound()
-        if company.owner_id != owner_id:
-            raise PermissionDenied()
-        return company

@@ -8,7 +8,7 @@ from app.models.mixin import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from .user import User
-    from .company_member import CompanyMember
+    from .company_associationand_actions import CompanyAssociation
 
 
 class Company(Base, UUIDMixin, TimestampMixin):
@@ -23,8 +23,8 @@ class Company(Base, UUIDMixin, TimestampMixin):
     )
 
     owner: Mapped["User"] = relationship("User", back_populates="companies")
-    members: Mapped[list["CompanyMember"]] = relationship(
-        "CompanyMember",
+    associations: Mapped[list["CompanyAssociation"]] = relationship(
+        "CompanyAssociation",
         back_populates="company",
         cascade="all, delete-orphan",
         lazy="raise_on_sql",

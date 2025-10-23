@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyUpdate
-from app.services.company_service import CompanyService
+from app.services.company import CompanyService
 from app.uow.unit_of_work import UnitOfWork
 
 

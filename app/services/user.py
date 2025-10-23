@@ -1,7 +1,7 @@
 from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.repository.user_repository import UserRepository
+from app.repository.user import UserRepository
 from app.schemas.user import UserCreate, UserUpdate
 from app.models.user import User
 from app.core.security import hash_password

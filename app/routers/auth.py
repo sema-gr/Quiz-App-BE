@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 from app.core.dependencies import get_uow
-from app.services.auth_service import AuthService
+from app.services.auth import AuthService
 from app.schemas.user import UserLogin, Token, UserRead, UserRegister
 from app.uow.unit_of_work import UnitOfWork
 
