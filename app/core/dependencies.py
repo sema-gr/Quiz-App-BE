@@ -1,5 +1,5 @@
 from app.db.postgres import async_session
-from app.services.company_members import CompanyMembershipService
+from app.services.company_action import CompanyAction
 from app.services.company import CompanyService
 from app.uow.unit_of_work import UnitOfWork
 from fastapi import Depends
@@ -19,11 +19,13 @@ async def get_current_user(
     return await AuthService(uow).get_current_user(token)
 
 
+def get_auth_service(uow: UnitOfWork = Depends(get_uow)) -> AuthService:
+    return AuthService(uow)
+
+
 def get_company_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyService:
     return CompanyService(uow)
 
 
-def get_company_members_service(
-    uow: UnitOfWork = Depends(get_uow),
-) -> CompanyMembershipService:
-    return CompanyMembershipService(uow)
+def get_company_action_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyAction:
+    return CompanyAction(uow)

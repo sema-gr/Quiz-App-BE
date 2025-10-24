@@ -2,11 +2,12 @@ import enum
 
 
 class MembershipStatus(enum.Enum):
-    ACTIVE = "active"
+    ACCEPTED = "accepted"
     PENDING = "pending"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
 
 
 class MembershipAction(enum.Enum):
     INVITE = "invite"
-    ACCEPT = "accept"
-    REMOVE = "remove"
+    REQUEST = "request"

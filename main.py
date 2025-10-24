@@ -5,7 +5,7 @@ from app.db.redis import redis_client
 from app.routers import (
     auth,
     company,
-    company_membership,
+    company_action,
     health,
     user,
 )
@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(user.router)
     app.include_router(auth.router)
     app.include_router(company.router)
-    app.include_router(company_membership.router)
+    app.include_router(company_action.router)
 
     @app.on_event("startup")
     async def startup_event():

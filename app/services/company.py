@@ -58,3 +58,6 @@ class CompanyService:
             company = await self._get_owned_company(user_id, company_id)
             company.is_visible = visible
             return await self.uow.companies.create(company)
+
+    async def list_members(self, company_id: UUID, skip: int = 0, limit: int = 10):
+        return await self.uow.company_actions.get_company_pending_requests(company_id)

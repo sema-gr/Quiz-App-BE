@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
-from app.models.company_associationand_actions import MembershipStatus
+from app.models.company_action import MembershipStatus
 from app.schemas.base import BaseConfigModel
 
 
