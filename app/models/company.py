@@ -1,10 +1,9 @@
-from sqlalchemy import ForeignKey, String
+import uuid
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
-from app.models.mixin import TimestampMixin, UUIDMixin
-from app.models.user import User
-import uuid
+from app.models.mixin import UUIDMixin, TimestampMixin
 
 
 class Company(Base, UUIDMixin, TimestampMixin):
@@ -17,4 +16,11 @@ class Company(Base, UUIDMixin, TimestampMixin):
     owner_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+
     owner: Mapped["User"] = relationship("User", back_populates="companies")
+    associations: Mapped[list["CompanyAssociation"]] = relationship(
+        "CompanyAssociation",
+        back_populates="company",
+        cascade="all, delete-orphan",
+        lazy="raise_on_sql",
+    )

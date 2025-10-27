@@ -1,11 +1,10 @@
 from app.db.postgres import async_session
-from app.services.company_service import CompanyService
+from app.services.company_action import CompanyAction
+from app.services.company import CompanyService
 from app.uow.unit_of_work import UnitOfWork
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_db
-from app.services.auth_service import AuthService
+from app.services.auth import AuthService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -15,11 +14,18 @@ def get_uow():
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme), uow: UnitOfWork = Depends(get_uow)
 ):
-    return await AuthService(db).get_current_user(token)
+    return await AuthService(uow).get_current_user(token)
+
+
+def get_auth_service(uow: UnitOfWork = Depends(get_uow)) -> AuthService:
+    return AuthService(uow)
 
 
 def get_company_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyService:
     return CompanyService(uow)
+
+
+def get_company_action_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyAction:
+    return CompanyAction(uow)

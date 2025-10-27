@@ -6,27 +6,23 @@ T = TypeVar("T")
 
 
 class BaseRepository(Generic[T]):
-    def __init__(self, model: Type[T], db: AsyncSession):
+    def __init__(self, model: Type[T], session: AsyncSession):
         self.model = model
-        self.db = db
+        self.session = session
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[T]:
         stmt = select(self.model).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def get_by_field(self, field_name: str, value: Any) -> Optional[T]:
         field = getattr(self.model, field_name)
-        result = await self.db.execute(select(self.model).where(field == value))
+        result = await self.session.execute(select(self.model).where(field == value))
         return result.scalars().first()
 
     async def create(self, obj: T) -> T:
-        self.db.add(obj)
-        return obj
-
-    async def update(self, obj: T) -> T:
-        self.db.add(obj)
+        self.session.add(obj)
         return obj
 
     async def delete(self, obj: T) -> None:
-        await self.db.delete(obj)
+        await self.session.delete(obj)
