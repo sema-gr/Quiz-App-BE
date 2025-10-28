@@ -1,5 +1,6 @@
 from uuid import UUID
-from app.schemas.company import CompanyCreate, CompanyUpdate
+from app.models.enum import MembershipStatus
+from app.schemas.company import CompanyCreate, CompanyMemberRead, CompanyUpdate
 from app.models.company import Company
 from app.core.exceptions import CompanyNotFound, PermissionDenied
 from app.uow.unit_of_work import UnitOfWork
@@ -59,5 +60,7 @@ class CompanyService:
             company.is_visible = visible
             return await self.uow.companies.create(company)
 
-    async def list_members(self, company_id: UUID, skip: int = 0, limit: int = 10):
-        return await self.uow.company_actions.get_company_pending_requests(company_id)
+    async def list_members(self, company_id: UUID, skip=0, limit=10):
+        async with self.uow as uow:
+            members = await uow.companies.get_pending_requests(company_id)
+            return members

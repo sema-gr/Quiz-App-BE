@@ -1,13 +1,8 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query
-from app.core.dependencies import (
-    get_company_service,
-    get_current_user,
-    get_company_action_service,
-)
+from app.core.dependencies import get_current_user, get_company_action_service
 from app.models.user import User
 from app.schemas.company import CompanyMemberRead
-from app.services.company import CompanyService
 from app.services.company_action import CompanyActionService
 
 router = APIRouter(prefix="/companies/{company_id}", tags=["Company Membership"])
@@ -21,59 +16,50 @@ async def manage_invitation(
     current_user: User = Depends(get_current_user),
     service: CompanyActionService = Depends(get_company_action_service),
 ):
-    return await service.handle_action(
-        user_id=current_user.id,
+    return await service.manage_invitation(
+        admin_id=current_user.id,
         company_id=company_id,
         target_user_id=user_id,
-        action_type=action,
-        role_check=True,
+        action=action,
     )
 
 
-@router.post("/invitations/accept-decline", response_model=CompanyMemberRead)
-async def manage_invitation_response(
+@router.post("/invitations/response", response_model=CompanyMemberRead)
+async def respond_invitation(
     company_id: UUID,
-    action: str = Query(..., regex="^(accept|decline)$"),
+    action: str = Query(..., regex="^(accept|reject)$"),
     current_user: User = Depends(get_current_user),
     service: CompanyActionService = Depends(get_company_action_service),
 ):
-    return await service.handle_action(
-        user_id=current_user.id,
-        company_id=company_id,
-        target_user_id=current_user.id,
-        action_type=action,
+    return await service.respond_to_invitation(
+        user_id=current_user.id, company_id=company_id, action_str=action
     )
 
 
 @router.post("/requests", response_model=CompanyMemberRead)
-async def manage_join_request(
+async def create_join_request(
     company_id: UUID,
-    action: str = Query(..., regex="^(create|cancel)$"),
     current_user: User = Depends(get_current_user),
     service: CompanyActionService = Depends(get_company_action_service),
 ):
-    return await service.handle_action(
-        user_id=current_user.id,
-        company_id=company_id,
-        target_user_id=None,
-        action_type=action,
+    return await service.manage_join_request(
+        user_id=current_user.id, company_id=company_id, action="create"
     )
 
 
 @router.post("/requests/{user_id}", response_model=CompanyMemberRead)
-async def manage_request_approval(
+async def respond_join_request(
     company_id: UUID,
     user_id: UUID,
-    action: str = Query(..., regex="^(approve|reject)$"),
+    action: str = Query(..., regex="^(accept|reject)$"),
     current_user: User = Depends(get_current_user),
     service: CompanyActionService = Depends(get_company_action_service),
 ):
-    return await service.handle_action(
-        user_id=current_user.id,
+    return await service.respond_to_join_request(
+        admin_id=current_user.id,
         company_id=company_id,
         target_user_id=user_id,
-        action_type=action,
-        role_check=True,
+        action_str=action,
     )
 
 
@@ -107,11 +93,30 @@ async def list_requests(
     return await service.list_requests_for_owner(current_user.id, company_id)
 
 
-@router.get("/members", response_model=list[CompanyMemberRead])
-async def list_members(
+@router.post("/admins/{user_id}", response_model=CompanyMemberRead)
+async def assign_admin(
     company_id: UUID,
-    skip: int = 0,
-    limit: int = 10,
-    service: CompanyService = Depends(get_company_service),
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: CompanyActionService = Depends(get_company_action_service),
 ):
-    return await service.list_members(company_id, skip, limit)
+    return await service.assign_admin(current_user.id, company_id, user_id)
+
+
+@router.delete("/admins/{user_id}", response_model=CompanyMemberRead)
+async def remove_admin(
+    company_id: UUID,
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: CompanyActionService = Depends(get_company_action_service),
+):
+    return await service.remove_admin(current_user.id, company_id, user_id)
+
+
+@router.get("/admins", response_model=list[CompanyMemberRead])
+async def list_admins(
+    company_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: CompanyActionService = Depends(get_company_action_service),
+):
+    return await service.list_admins(company_id)

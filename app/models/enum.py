@@ -11,3 +11,9 @@ class MembershipStatus(enum.Enum):
 class MembershipAction(enum.Enum):
     INVITE = "invite"
     REQUEST = "request"
+
+
+class RoleEnum(enum.Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"
