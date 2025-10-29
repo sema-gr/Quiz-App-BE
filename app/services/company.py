@@ -62,5 +62,14 @@ class CompanyService:
 
     async def list_members(self, company_id: UUID, skip=0, limit=10):
         async with self.uow as uow:
-            members = await uow.companies.get_pending_requests(company_id)
+            rows = await uow.companies.get_pending_requests(company_id, skip, limit)
+            members = [
+                CompanyMemberRead(
+                    company_id=assoc.company_id,
+                    user_id=assoc.user_id,
+                    status=status.value,
+                    created_at=assoc.created_at,
+                )
+                for assoc, status in rows
+            ]
             return members

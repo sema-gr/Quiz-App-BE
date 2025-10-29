@@ -7,6 +7,7 @@ from app.routers import (
     company,
     company_action,
     health,
+    quiz,
     user,
 )
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(company.router)
     app.include_router(company_action.router)
+    app.include_router(quiz.router)
 
     @app.on_event("startup")
     async def startup_event():
