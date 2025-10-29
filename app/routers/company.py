@@ -2,7 +2,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from app.core.dependencies import get_current_user, get_company_service
 from app.models.user import User
-from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyRead
+from app.schemas.company import (
+    CompanyCreate,
+    CompanyMemberRead,
+    CompanyUpdate,
+    CompanyRead,
+)
 from app.services.company import CompanyService
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
@@ -61,3 +66,13 @@ async def change_visibility(
     service: CompanyService = Depends(get_company_service),
 ):
     return await service.change_visibility(user.id, company_id, is_visible)
+
+
+@router.get("/{company_id}/members", response_model=list[CompanyMemberRead])
+async def list_members(
+    company_id: UUID,
+    skip: int = 0,
+    limit: int = 10,
+    service: CompanyService = Depends(get_company_service),
+):
+    return await service.list_members(company_id, skip, limit)

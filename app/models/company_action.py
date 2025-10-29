@@ -4,9 +4,10 @@ from sqlalchemy import ForeignKey, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.models.enum import MembershipAction, MembershipStatus
+from app.models.mixin import TimestampMixin, UUIDMixin
 
 
-class CompanyAction(Base):
+class CompanyAction(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "company_actions"
 
     association_id: Mapped[uuid.UUID] = mapped_column(

@@ -1,5 +1,5 @@
 from app.db.postgres import async_session
-from app.services.company_action import CompanyAction
+from app.services.company_action import CompanyActionService
 from app.services.company import CompanyService
 from app.uow.unit_of_work import UnitOfWork
 from fastapi import Depends
@@ -27,5 +27,7 @@ def get_company_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyService:
     return CompanyService(uow)
 
 
-def get_company_action_service(uow: UnitOfWork = Depends(get_uow)) -> CompanyAction:
-    return CompanyAction(uow)
+def get_company_action_service(
+    uow: UnitOfWork = Depends(get_uow),
+) -> CompanyActionService:
+    return CompanyActionService(uow)
