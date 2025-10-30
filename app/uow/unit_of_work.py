@@ -1,8 +1,10 @@
 from app.repository.quiz import AnswerRepository, QuestionRepository, QuizRepository
+from app.repository.quiz_attempt import QuizAttemptRepository
 from app.repository.user import UserRepository
 from app.repository.company import CompanyRepository
 from app.repository.company_action import CompanyActionRepository
 from app.repository.company_association import CompanyAssociationRepository
+from app.repository.user_answer import UserAnswerRepository
 from app.uow.base import BaseUnitOfWork
 
 
@@ -16,6 +18,8 @@ class UnitOfWork(BaseUnitOfWork):
         self.quizzes: QuizRepository
         self.questions: QuestionRepository
         self.answers: AnswerRepository
+        self.quiz_attempts: QuizAttemptRepository
+        self.user_answer: UserAnswerRepository
 
     async def __aenter__(self):
         await super().__aenter__()
@@ -26,4 +30,6 @@ class UnitOfWork(BaseUnitOfWork):
         self.quizzes = QuizRepository(self.session)
         self.questions = QuestionRepository(self.session)
         self.answers = AnswerRepository(self.session)
+        self.quiz_attempts = QuizAttemptRepository(self.session)
+        self.user_answer = UserAnswerRepository(self.session)
         return self

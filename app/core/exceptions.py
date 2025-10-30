@@ -87,3 +87,8 @@ class PermissionDenied(HTTPException):
 class NotCompanyMember(HTTPException):
     def __init__(self, detail: str = "User is not a member of this company"):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+class MaxAttemptsReached(HTTPException):
+    def __init__(self, detail: str = "Maximum number of quiz attempts reached"):
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
