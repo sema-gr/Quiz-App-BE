@@ -6,7 +6,14 @@ import asyncio
 
 from app.core.settings import settings
 from app.core.database import Base
-from app.models import user  # noqa: F401
+from app.models import user
+from app.models import company
+from app.models import company_association
+from app.models import company_action
+from app.models import quiz
+from app.models import question
+from app.models import answer
+import app.models
 
 target_metadata = Base.metadata
 

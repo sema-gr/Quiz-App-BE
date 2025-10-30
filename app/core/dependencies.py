@@ -1,6 +1,7 @@
 from app.db.postgres import async_session
 from app.services.company_action import CompanyActionService
 from app.services.company import CompanyService
+from app.services.quiz import QuizService
 from app.uow.unit_of_work import UnitOfWork
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
@@ -31,3 +32,7 @@ def get_company_action_service(
     uow: UnitOfWork = Depends(get_uow),
 ) -> CompanyActionService:
     return CompanyActionService(uow)
+
+
+def get_quiz_service(uow: UnitOfWork = Depends(get_uow)) -> QuizService:
+    return QuizService(uow)

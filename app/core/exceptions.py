@@ -9,10 +9,8 @@ class CompanyNotFound(HTTPException):
 
 
 class PermissionDenied(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied"
-        )
+    def __init__(self, detail: str = "Not enough permissions"):
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 
 class MemberAlreadyExists(HTTPException):
@@ -71,6 +69,21 @@ class AuthConfigurationError(HTTPException):
         )
 
 
-class InvalidActionError(Exception):
+class InvalidActionError(HTTPException):
     def __init__(self, detail: str = "Invalid action provided"):
-        self.detail = detail
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
+class QuizNotFound(HTTPException):
+    def __init__(self, detail: str = "Quiz not found"):
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+
+
+class PermissionDenied(HTTPException):
+    def __init__(self, message: str = "Not enough permissions"):
+        super().__init__(message)
+
+
+class NotCompanyMember(HTTPException):
+    def __init__(self, detail: str = "User is not a member of this company"):
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)

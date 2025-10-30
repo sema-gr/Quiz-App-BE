@@ -24,16 +24,4 @@ class CompanyRepository(BaseRepository[Company]):
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        rows = result.all()
-
-        members = []
-        for assoc, status in rows:
-            members.append(
-                CompanyMemberRead(
-                    company_id=assoc.company_id,
-                    user_id=assoc.user_id,
-                    status=status.value,
-                    created_at=assoc.created_at,
-                )
-            )
-        return members
+        return result.all()
