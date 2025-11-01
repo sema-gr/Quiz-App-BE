@@ -14,7 +14,16 @@ services:
     volumes:
       - .:/app
     command: poetry run uvicorn main:app --host ${HOST} --port ${PORT}
-
+  app:
+      depends_on:
+        - db
+      build: .
+      container_name: quiz-app
+      command: tail -f /dev/null
+      volumes:
+        - .:/app
+      env_file:
+        - .env
   db:
     image: postgres:15
     container_name: quiz-db

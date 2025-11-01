@@ -71,3 +71,10 @@ class CompanyAssociationRepository(BaseRepository[CompanyAssociation]):
             action_type=MembershipAction.REQUEST,
             status=MembershipStatus.PENDING,
         )
+
+    async def list(self, company_id=None) -> List[CompanyAssociation]:
+        query = select(CompanyAssociation)
+        if company_id is not None:
+            query = query.where(CompanyAssociation.company_id == company_id)
+        result = await self.session.execute(query)
+        return result.scalars().all()

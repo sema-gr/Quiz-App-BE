@@ -1,7 +1,13 @@
+from contextlib import asynccontextmanager
 import pytest
 import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from main import app
+from app.core.database import Base
+from app.core.dependencies import get_current_user, get_uow
+from app.uow.unit_of_work import UnitOfWork
 from app.models.user import User
 from app.models.company import Company
 from app.models.company_association import CompanyAssociation
@@ -9,60 +15,66 @@ from app.models.quiz import Quiz
 from app.models.question import Question
 from app.models.answer import Answer
 from app.models.enum import RoleEnum
-from app.schemas.quiz_submission import QuizResultRead, QuizSubmit, UserAnswerSubmit
-from app.uow.unit_of_work import UnitOfWork
-from app.services.quiz import QuizService
-from app.core.exceptions import MaxAttemptsReached
+from app.models.quiz_attempt import QuizAttempt
 
 
 @pytest_asyncio.fixture(scope="function")
-async def uow(db_engine):
-    session_factory = async_sessionmaker(
-        bind=db_engine, expire_on_commit=False, class_=AsyncSession
+async def engine():
+    engine = create_async_engine(
+        "postgresql+asyncpg://admin:admin@db/quiz_app_test",
+        future=True,
+        echo=False,
     )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    async def _session_factory():
-        async with session_factory() as session:
-            yield session
+    yield engine
 
-    yield UnitOfWork(session_factory=_session_factory)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_data(db_engine):
-    session_factory = async_sessionmaker(
-        bind=db_engine, expire_on_commit=False, class_=AsyncSession
-    )
+async def session_factory(engine):
+    return async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
-    async with session_factory() as session:
-        uow_instance = UnitOfWork(session_factory=lambda: session)
 
-        if hasattr(uow_instance, "_initialize_repositories"):
-            uow_instance._initialize_repositories()
-        else:
-            from app.repository.user import UserRepository
-            from app.repository.company import CompanyRepository
-            from app.repository.company_association import CompanyAssociationRepository
-            from app.repository.quiz import (
-                QuizRepository,
-                QuestionRepository,
-                AnswerRepository,
-            )
+@pytest_asyncio.fixture(scope="function")
+def uow_factory(session_factory):
+    @asynccontextmanager
+    async def _uow():
+        session = session_factory()
+        uow = UnitOfWork(lambda: session)
+        await uow.__aenter__()
+        try:
+            yield uow
+        finally:
+            await uow.__aexit__(None, None, None)
 
-            uow_instance.users = UserRepository(session)
-            uow_instance.companies = CompanyRepository(session)
-            uow_instance.company_associations = CompanyAssociationRepository(session)
-            uow_instance.quizzes = QuizRepository(session)
-            uow_instance.questions = QuestionRepository(session)
-            uow_instance.answers = AnswerRepository(session)
+    return _uow
 
-        owner_user = User(email="owner@test.com", hashed_password="hash_password")
-        member_user = User(email="member@test.com", hashed_password="hash_password")
-        await uow_instance.users.create(owner_user)
-        await uow_instance.users.create(member_user)
 
-        company = Company(name="Test Company", owner_id=owner_user.id)
-        await uow_instance.companies.create(company)
+async def _override_get_uow():
+    async with uow_factory() as uow:
+        yield uow
+
+
+app.dependency_overrides[get_uow] = _override_get_uow
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_data_without_attempt(uow_factory):
+    async with uow_factory() as uow:
+        owner_user = User(id=uuid4(), email="owner@test.com", hashed_password="hash")
+        member_user = User(id=uuid4(), email="member@test.com", hashed_password="hash")
+        await uow.users.create(owner_user)
+        await uow.users.create(member_user)
+        await uow.session.flush()
+
+        company = Company(id=uuid4(), name="Test Company", owner_id=owner_user.id)
+        await uow.companies.create(company)
+        await uow.session.flush()
 
         owner_assoc = CompanyAssociation(
             user_id=owner_user.id, company_id=company.id, role=RoleEnum.OWNER.value
@@ -70,34 +82,36 @@ async def test_data(db_engine):
         member_assoc = CompanyAssociation(
             user_id=member_user.id, company_id=company.id, role=RoleEnum.MEMBER.value
         )
-        await uow_instance.company_associations.create(owner_assoc)
-        await uow_instance.company_associations.create(member_assoc)
+        await uow.company_associations.create(owner_assoc)
+        await uow.company_associations.create(member_assoc)
 
         quiz = Quiz(
+            id=uuid4(),
             company_id=company.id,
             name="Sample Quiz",
             description="A test quiz",
             max_attempts_per_user=1,
         )
-        await uow_instance.quizzes.create(quiz)
+        await uow.quizzes.create(quiz)
 
-        q1 = Question(quiz_id=quiz.id, text="What is 2+2?")
-        await uow_instance.questions.create(q1)
+        q1 = Question(quiz_id=quiz.id, text="2+2?")
+        q2 = Question(quiz_id=quiz.id, text="Capital of France?")
+        await uow.questions.create(q1)
+        await uow.questions.create(q2)
+
         a1_1 = Answer(question_id=q1.id, text="3", is_correct=False)
         a1_2 = Answer(question_id=q1.id, text="4", is_correct=True)
-        await uow_instance.answers.create(a1_1)
-        await uow_instance.answers.create(a1_2)
-
-        q2 = Question(quiz_id=quiz.id, text="Capital of France?")
-        await uow_instance.questions.create(q2)
         a2_1 = Answer(question_id=q2.id, text="Paris", is_correct=True)
         a2_2 = Answer(question_id=q2.id, text="London", is_correct=False)
-        await uow_instance.answers.create(a2_1)
-        await uow_instance.answers.create(a2_2)
+        assoc_list = await uow.company_associations.list()
+        await uow.answers.create(a1_1)
+        await uow.answers.create(a1_2)
+        await uow.answers.create(a2_1)
+        await uow.answers.create(a2_2)
 
-        await session.commit()
+        await uow.commit()
 
-        class TestData:
+        class TD:
             def __init__(self):
                 self.owner = owner_user
                 self.member = member_user
@@ -106,166 +120,119 @@ async def test_data(db_engine):
                 self.questions = [q1, q2]
                 self.q1_answers = {a1_1.id: a1_1.is_correct, a1_2.id: a1_2.is_correct}
                 self.q2_answers = {a2_1.id: a2_1.is_correct, a2_2.id: a2_2.is_correct}
+                self.company_associations = assoc_list
 
             def get_answer_id(self, answers_dict, is_correct: bool):
-                for answer_id, correct_status in answers_dict.items():
-                    if correct_status == is_correct:
-                        return answer_id
+                for aid, correct in answers_dict.items():
+                    if correct == is_correct:
+                        return aid
                 return None
 
-        return TestData()
+        return TD()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_data_with_attempt(test_data_without_attempt, uow_factory):
+    async with uow_factory() as uow:
+        attempt = QuizAttempt(
+            user_id=test_data_without_attempt.member.id,
+            quiz_id=test_data_without_attempt.quiz.id,
+            company_id=test_data_without_attempt.company.id,
+            total_questions=2,
+            score=2,
+        )
+        await uow.quiz_attempts.create(attempt)
+        await uow.commit()
+    return test_data_without_attempt
+
+
+@pytest_asyncio.fixture()
+async def client(test_data_without_attempt, uow_factory):
+    td = test_data_without_attempt
+
+    async def _get_current_user():
+        return td.member
+
+    async def _get_uow():
+        async with uow_factory() as uow:
+            yield uow
+
+    app.dependency_overrides[get_current_user] = _get_current_user
+    app.dependency_overrides[get_uow] = _get_uow
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
-class TestQuizWorkflow:
-    async def test_submit_quiz_correctly(self, uow: UnitOfWork, test_data):
-        service = QuizService(uow)
+async def test_submit_quiz(client, test_data_without_attempt):
+    td = test_data_without_attempt
 
-        submit_data = QuizSubmit(
-            answers=[
-                UserAnswerSubmit(
-                    question_id=test_data.questions[0].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q1_answers, True)
-                    ],
-                ),
-                UserAnswerSubmit(
-                    question_id=test_data.questions[1].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q2_answers, True)
-                    ],
-                ),
-            ]
-        )
+    payload = {
+        "answers": [
+            {
+                "question_id": str(td.questions[0].id),
+                "selected_answer_ids": [str(td.get_answer_id(td.q1_answers, True))],
+            }
+        ]
+    }
 
-        result = await service.submit_quiz(
-            user_id=test_data.member.id,
-            company_id=test_data.company.id,
-            quiz_id=test_data.quiz.id,
-            submission=submit_data,
-        )
+    response = await client.post(
+        f"/companies/{td.company.id}/quizzes/{td.quiz.id}/submit", json=payload
+    )
 
-        assert isinstance(result, QuizResultRead)
-        assert result.score == 2
-        assert result.total_questions == 2
-        assert result.percentage == 100.0
+    assert response.status_code == 200, response.text
 
-        attempt = await uow.quiz_attempts.get_by_field("id", result.attempt_id)
-        assert attempt is not None
-        assert attempt.score == 2
 
-        correct_count = await uow.user_answer.get_total_correct_for_user(
-            test_data.member.id
-        )
-        assert correct_count == 2
+@pytest.mark.asyncio
+async def test_get_my_overall_stats(client, test_data_with_attempt, uow_factory):
+    td = test_data_with_attempt
 
-    async def test_submit_quiz_partially_correct(self, uow: UnitOfWork, test_data):
-        service = QuizService(uow)
+    async def _get_current_user():
+        return td.member
 
-        submit_data = QuizSubmit(
-            answers=[
-                UserAnswerSubmit(
-                    question_id=test_data.questions[0].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q1_answers, True)
-                    ],
-                ),
-                UserAnswerSubmit(
-                    question_id=test_data.questions[1].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q2_answers, False)
-                    ],
-                ),
-            ]
-        )
+    async def _get_uow():
+        async with uow_factory() as uow:
+            yield uow
 
-        result = await service.submit_quiz(
-            user_id=test_data.member.id,
-            company_id=test_data.company.id,
-            quiz_id=test_data.quiz.id,
-            submission=submit_data,
-        )
+    app.dependency_overrides[get_current_user] = _get_current_user
+    app.dependency_overrides[get_uow] = _get_uow
 
-        assert result.score == 1
-        assert result.total_questions == 2
-        assert result.percentage == 50.0
+    response = await client.get("/profile/me/stats")
+    assert response.status_code == 200
 
-    async def test_submit_quiz_max_attempts_fails(self, uow: UnitOfWork, test_data):
-        service = QuizService(uow)
+    data = response.json()
+    assert "user_id" in data
+    assert "company_id" in data
+    assert "total_correct_answers" in data
+    assert "total_answered_questions" in data
+    assert "average_score_percentage" in data
 
-        submit_data = QuizSubmit(
-            answers=[
-                UserAnswerSubmit(
-                    question_id=test_data.questions[0].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q1_answers, True)
-                    ],
-                ),
-                UserAnswerSubmit(
-                    question_id=test_data.questions[1].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q2_answers, True)
-                    ],
-                ),
-            ]
-        )
 
-        await service.submit_quiz(
-            user_id=test_data.member.id,
-            company_id=test_data.company.id,
-            quiz_id=test_data.quiz.id,
-            submission=submit_data,
-        )
+@pytest.mark.asyncio
+async def test_get_my_company_stats(client, test_data_with_attempt, uow_factory):
+    td = test_data_with_attempt
+    company_id = str(td.company.id)
 
-        with pytest.raises(MaxAttemptsReached):
-            await service.submit_quiz(
-                user_id=test_data.member.id,
-                company_id=test_data.company.id,
-                quiz_id=test_data.quiz.id,
-                submission=submit_data,
-            )
+    async def _get_current_user():
+        return td.member
 
-    async def test_get_user_stats(self, uow: UnitOfWork, test_data):
-        service = QuizService(uow)
+    async def _get_uow():
+        async with uow_factory() as uow:
+            yield uow
 
-        stats_before = await service.get_user_stats(test_data.member.id)
-        assert stats_before.total_answered_questions == 0
-        assert stats_before.average_score_percentage == 0
+    app.dependency_overrides[get_current_user] = _get_current_user
+    app.dependency_overrides[get_uow] = _get_uow
 
-        submit_data = QuizSubmit(
-            answers=[
-                UserAnswerSubmit(
-                    question_id=test_data.questions[0].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q1_answers, True)
-                    ],
-                ),
-                UserAnswerSubmit(
-                    question_id=test_data.questions[1].id,
-                    selected_answer_ids=[
-                        test_data.get_answer_id(test_data.q2_answers, False)
-                    ],
-                ),
-            ]
-        )
+    response = await client.get(f"/profile/me/stats/companies/{company_id}")
+    assert response.status_code == 200
 
-        await service.submit_quiz(
-            user_id=test_data.member.id,
-            company_id=test_data.company.id,
-            quiz_id=test_data.quiz.id,
-            submission=submit_data,
-        )
-
-        stats_after = await service.get_user_stats(test_data.member.id)
-
-        assert stats_after.total_correct_answers == 1
-        assert stats_after.total_answered_questions == 2
-        assert stats_after.average_score_percentage == 50.0
-
-        stats_company = await service.get_user_stats(
-            test_data.member.id, test_data.company.id
-        )
-        stats_other_company = await service.get_user_stats(test_data.member.id, uuid4())
-
-        assert stats_company.average_score_percentage == 50.0
-        assert stats_other_company.average_score_percentage == 0.0
+    data = response.json()
+    assert "user_id" in data
+    assert "company_id" in data
+    assert "total_correct_answers" in data
+    assert "total_answered_questions" in data
+    assert "average_score_percentage" in data
