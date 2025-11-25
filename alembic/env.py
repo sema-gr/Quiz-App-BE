@@ -13,6 +13,8 @@ from app.models import company_action
 from app.models import quiz
 from app.models import question
 from app.models import answer
+from app.models import quiz_attempt
+from app.models import user_answer
 import app.models
 
 target_metadata = Base.metadata

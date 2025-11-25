@@ -1,10 +1,22 @@
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
 class BaseUnitOfWork:
     def __init__(self, session_factory):
         self._session_factory = session_factory
-        self.session = None
+        self.session: AsyncSession | None = None
 
     async def __aenter__(self):
-        self.session = self._session_factory()
+        if callable(self._session_factory):
+            maybe_session = self._session_factory()
+            if asyncio.iscoroutine(maybe_session):
+                self.session = await maybe_session
+            else:
+                self.session = maybe_session
+        else:
+            raise TypeError("session_factory має бути callable")
+
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -14,10 +26,13 @@ class BaseUnitOfWork:
             else:
                 await self.commit()
         finally:
-            await self.session.close()
+            if self.session:
+                await self.session.close()
 
     async def commit(self):
-        await self.session.commit()
+        if self.session:
+            await self.session.commit()
 
     async def rollback(self):
-        await self.session.rollback()
+        if self.session:
+            await self.session.rollback()

@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN /root/.local/bin/poetry config virtualenvs.create false
+
 ENV PATH="/root/.local/bin:$PATH"
 
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root --with dev --no-interaction --no-ansi
 
 COPY . .
@@ -17,4 +19,4 @@ COPY . .
 ENV HOST=0.0.0.0
 ENV PORT=8000
 
-CMD ["sh", "-c", "poetry run uvicorn main:app --host $HOST --port $PORT"]
+CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
